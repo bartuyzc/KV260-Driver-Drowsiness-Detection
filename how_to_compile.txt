@@ -1,0 +1,4 @@
+vai_c_xir -x quantized_output/ResNet_int.xmodel \
+-a arch.json \
+-n resnet50_compiled \
+-o ./compiled_output
