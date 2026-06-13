@@ -40,7 +40,7 @@ input_dims = tuple(input_tensors[0].dims)   # Örn: [1, 224, 224, 3]
 output_dims = tuple(output_tensors[0].dims) # Örn: [1, 2]
 
 # 3. Görüntü Önişleme (Senin Eğitim Kodundaki Transform Mantığı)
-IMAGE_NAME = "test_image.jpg" # Test etmek istediğin resmin adı
+IMAGE_NAME = "test_sleepy1.png" # Test etmek istediğin resmin adı
 
 if not os.path.exists(IMAGE_NAME):
     print(f"Hata: Test için '{IMAGE_NAME}' bulunamadı. Lütfen klasöre bir test resmi koyun.")

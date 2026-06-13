@@ -5,125 +5,135 @@ import numpy as np
 import vart
 import xir
 import sys
+import time
+from collections import deque
 
-# ---------------------------------------------------------
-# 1. Yapılandırma ve Sınıf Etiketleri
-# ---------------------------------------------------------
+# ---------------------------
+# CONFIG
+# ---------------------------
 MODEL_PATH = "resnet50_compiled.xmodel"
-CLASSES = ["AWAKE", "SLEEPY"] 
+CLASSES = ["AWAKE", "SLEEPY"]
+DISPLAY = True  # HDMI monitor bagliysa True yap
+
+# ---------------------------
+# DPU LOAD
+# ---------------------------
+print(">> Model yukleniyor...")
 
 if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"Hata: {MODEL_PATH} dosyası bulunamadı!")
+    raise FileNotFoundError(f"Model bulunamadi: {MODEL_PATH}")
 
-# ---------------------------------------------------------
-# 2. Modeli ve DPU Sürücüsünü Yükleme
-# ---------------------------------------------------------
-print(">> Model yükleniyor...")
 graph = xir.Graph.deserialize(MODEL_PATH)
 root = graph.get_root_subgraph()
 
-def get_dpu_subgraph(root_graph):
-    child_subgraphs = root_graph.get_children()
-    for s in child_subgraphs:
-        if s.has_attr("device") and s.get_attr("device").upper() == "DPU":
-            return s
-    return None
+dpu_subgraph = None
+for s in root.get_children():
+    if s.has_attr("device") and s.get_attr("device").upper() == "DPU":
+        dpu_subgraph = s
+        break
 
-dpu_subgraph = get_dpu_subgraph(root)
 if dpu_subgraph is None:
-    raise Exception("Hata: Model içerisinde DPU için derlenmiş bir subgraph bulunamadı!")
+    raise Exception("DPU subgraph bulunamadi!")
 
-print(">> DPU Runner oluşturuluyor...")
 runner = vart.Runner.create_runner(dpu_subgraph, "run")
 
-# Tensor Boyutlarını Alma
-input_tensors = runner.get_input_tensors()
+input_tensors  = runner.get_input_tensors()
 output_tensors = runner.get_output_tensors()
 
-input_dims = tuple(input_tensors[0].dims)   # Örn: (1, 224, 224, 1)
-output_dims = tuple(output_tensors[0].dims) # Örn: (1, 2)
+input_dims  = input_tensors[0].dims
+output_dims = output_tensors[0].dims
 
-target_height = input_dims[1]
-target_width  = input_dims[2]
+H, W = input_dims[1], input_dims[2]
+print(f">> Input: {input_dims}  Output: {output_dims}")
 
-# ---------------------------------------------------------
-# 3. USB Webcam Bağlantısı (V4L2)
-# ---------------------------------------------------------
-print(">> Kamera bağlantısı başlatılıyor...")
+# Buffer reuse - loop disinda bir kere olustur
+input_data  = np.zeros(input_dims,  dtype=np.float32)
+output_data = np.zeros(output_dims, dtype=np.float32)
+
+# Smoothing
+history = deque(maxlen=3)
+
+# ---------------------------
+# CAMERA
+# ---------------------------
 cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
-
 if not cap.isOpened():
-    print("❌ Hata: USB Webcam açılamadı!")
-    del runner
+    print("Kamera acilamadi")
     sys.exit(1)
 
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-print(">> Canlı analiz başladı. Çıkmak için 'q' tuşuna basın.\n")
+print(">> Basladi. Durdurmak icin Ctrl+C")
 
-# ---------------------------------------------------------
-# 4. Sonsuz Video Döngüsü
-# ---------------------------------------------------------
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("⚠️ Kameradan görüntü alınamadı.")
-        break
+# ---------------------------
+# HELPERS
+# ---------------------------
+def softmax(x):
+    x = x - np.max(x)
+    e = np.exp(x)
+    return e / np.sum(e)
 
-    display_frame = frame.copy()
+# ---------------------------
+# LOOP
+# ---------------------------
+prev_time   = time.time()
+frame_count = 0
 
-    # ---- GÜVENLİ GRAYSCALE PIPELINE ----
-    # 1. Görüntüyü Siyah-Beyaz yap
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    
-    # 2. Modelin beklediği boyuta ölçekle
-    img = cv2.resize(gray, (target_width, target_height))
-    
-    # 3. Float32 tipine dönüştür ve normalize et
-    img = img.astype(np.float32) / 255.0
-    
-    # 4. SEGMENTATION FAULT ÖNLEYİCİ: 
-    # Boş bir DPU giriş matrisi oluşturup veriyi içine güvenli bir şekilde kopyalıyoruz.
-    # Bu yöntem bellek adreslemesinin donanımla %100 uyumlu olmasını sağlar.
-    input_data = np.zeros(input_dims, dtype=np.float32)
-    input_data[0, :, :, 0] = img  # Grayscale veriyi tek kanala yerleştir
+try:
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            continue
 
-    # ---- BELLEK VE ÇIKARIM ----
-    # Sürücüye (Runner) veriyi beslerken ardışık bellek garantisi veriyoruz
-    input_buffer = [np.ascontiguousarray(input_data)]
-    output_buffer = [np.zeros(output_dims, dtype=np.float32)]
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        img  = cv2.resize(gray, (W, H))
+        img  = img.astype(np.float32) / 255.0
 
-    try:
-        # DPU Çıkarımı
-        job_id = runner.execute_async(input_buffer, output_buffer)
-        runner.wait(job_id)
-    except Exception as e:
-        print(f"❌ Çıkarım esnasında hata oluştu: {e}")
-        break
+        # 3 kanali ayni gri degerle doldur (train.py: Grayscale(num_output_channels=3))
+        input_data[0, :, :, 0] = img
+        input_data[0, :, :, 1] = img
+        input_data[0, :, :, 2] = img
 
-    # ---- SONUÇLARI ANLAMLANDIRMA ----
-    raw_outputs = output_buffer[0]
-    probabilities = np.exp(raw_outputs) / np.sum(np.exp(raw_outputs), axis=1, keepdims=True)
-    predicted_class = np.argmax(probabilities)
-    
-    label = CLASSES[predicted_class]
-    score = probabilities[0][predicted_class] * 100
+        inp = [np.ascontiguousarray(input_data)]
+        out = [output_data]
 
-    # ---- EKRANA YAZDIRMA ----
-    color = (0, 255, 0) if label == "AWAKE" else (0, 0, 255)
-    text = f"{label} ({score:.1f}%)"
-    cv2.putText(display_frame, text, (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, color, 3, cv2.LINE_AA)
-    
-    cv2.imshow("Drowsiness Detection", display_frame)
+        jid = runner.execute_async(inp, out)
+        runner.wait(jid)
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+        probs      = softmax(out[0][0])
+        idx        = int(np.argmax(probs))
+        history.append(idx)
+        stable_idx = max(set(history), key=history.count)
+        label      = CLASSES[stable_idx]
+        score      = probs[stable_idx] * 100
 
-# ---------------------------------------------------------
-# 5. Kaynakları Temizleme
-# ---------------------------------------------------------
+        curr_time = time.time()
+        fps       = 1.0 / (curr_time - prev_time)
+        prev_time = curr_time
+        frame_count += 1
+
+        print(f"\r[{frame_count:06d}]  {label:<8}  conf={score:5.1f}%  FPS={fps:5.1f}",
+              end="", flush=True)
+
+        if DISPLAY:
+            color = (0, 255, 0) if label == "AWAKE" else (0, 0, 255)
+            cv2.putText(frame, f"{label} {score:.1f}%", (30, 50),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+            cv2.putText(frame, f"FPS: {fps:.1f}", (30, 85),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            cv2.imshow("KV260 Drowsiness", frame)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+
+except KeyboardInterrupt:
+    print("\n>> Ctrl+C alindi.")
+
+# ---------------------------
+# CLEANUP
+# ---------------------------
 cap.release()
-cv2.destroyAllWindows()
+if DISPLAY:
+    cv2.destroyAllWindows()
 del runner
-print(">> Sistem kapatıldı.")
+print(">> Kapatildi.")
