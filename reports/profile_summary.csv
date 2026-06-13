@@ -1,0 +1,14 @@
+Profile Summary
+Generated on: 2026-06-12 19:49:49
+XRT build version: 0.0.0
+Build version branch: N/A
+Build version hash: N/A
+Build version date: N/A
+Target devices: N/A
+
+DPU Summary
+Kernel Name,Number Of Runs,CU Full Name,Minimum Time (ms),Average Time (ms),Maximum Time (ms),Workload(GOP),DPU Performance(GOP/s),Mem IO(MB),Mem Bandwidth(MB/s),
+subgraph_ResNet__ResNet_AdaptiveAvgPool2d_avgpool__10404_fix,600,DPUCZDX8G_1:batch-1,11.001,11.044,11.346,8.198,61.184,36.987,3391.803,
+vart::TensorBuffer::copy_tensor_buffer,1200,CPU,0.038,0.798,1.671,
+xir::XrtCu::run,600,CPU,10.982,11.020,11.310,
+
