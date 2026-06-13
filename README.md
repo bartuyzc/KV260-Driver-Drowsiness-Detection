@@ -62,6 +62,7 @@ The system captures frames from a camera, preprocesses the eye region, performs 
 ├── resnet50_compiled.xmodel    # Compiled model for KV260 DPU
 ├── compiled_output/            # Vitis AI compilation outputs
 ├── quantized_output/           # Quantized model outputs
+├── reports/                    # VAI Trace reports
 
 ├── data/                       # Dataset directory
 
