@@ -70,6 +70,7 @@ The system captures frames from a camera, preprocesses the eye region, performs 
 
 ├── how_to_compile.txt          # Vitis AI compilation instructions
 ├── notes.txt                   # Development notes
+├── requirements.txt            # Virtual environment libraries for training
 
 └── README.md
 ```
