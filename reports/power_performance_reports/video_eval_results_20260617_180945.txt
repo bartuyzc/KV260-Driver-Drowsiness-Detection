@@ -1,0 +1,42 @@
+>> All 200 frames collected.
+
+Date/Time  : 2026-06-17 18:10:29
+Model      : resnet50_compiled.xmodel
+Awake      : 100 frames  |  Sleepy: 100 frames
+
+=======================================================
+  VIDEO EVALUATE ACCURACY RESULTS
+=======================================================
+  Total frames (excl. warmup) : 367
+
+  [SYSTEM - Real End-to-End]
+  Avg frame duration          : 84.11 ms
+  Avg system FPS              : 11.89
+  Min / Max system FPS        : 10.30 / 15.15
+
+  [DPU - Inference Only]
+  Avg DPU duration            : 13.415 ms
+  Avg DPU FPS                 : 74.54
+  Min / Max DPU ms            : 13.282 / 13.683
+
+  [ACCURACY]
+  Total samples               : 200
+  Accuracy                    : 0.9000  (90.00%)
+
+  Confusion Matrix (Awake=0, Sleepy=1):
+    [[100   0]
+ [ 20  80]]
+
+  Classification Report:
+              precision    recall  f1-score   support
+
+       Awake     0.8333    1.0000    0.9091       100
+      Sleepy     1.0000    0.8000    0.8889       100
+
+    accuracy                         0.9000       200
+   macro avg     0.9167    0.9000    0.8990       200
+weighted avg     0.9167    0.9000    0.8990       200
+
+=======================================================
+
+>> Results saved to: reports/video_eval_results_20260617_180945.txt

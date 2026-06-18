@@ -1,0 +1,31 @@
+Date/Time     : 2026-06-17 17:48:26
+
+=======================================================
+  DPU ACCURACY RESULTS
+=======================================================
+  Model         : resnet50_compiled.xmodel
+  Test set      : data/test
+  Total images  : 16981
+  Duration      : 304.51 s
+  Average FPS   : 55.76
+
+  Accuracy      : 0.6557  (65.57%)
+  AUC-ROC       : 0.7346
+
+  Confusion Matrix (awake=0, sleepy=1):
+    [[4509 4082]
+ [1765 6625]]
+
+  Classification Report:
+              precision    recall  f1-score   support
+
+       awake     0.7187    0.5249    0.6067      8591
+      sleepy     0.6188    0.7896    0.6938      8390
+
+    accuracy                         0.6557     16981
+   macro avg     0.6687    0.6572    0.6502     16981
+weighted avg     0.6693    0.6557    0.6497     16981
+
+=======================================================
+
+>> Results saved to: reports/image_eval_results_20260617_174320.txt

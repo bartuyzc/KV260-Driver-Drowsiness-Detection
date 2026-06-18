@@ -1,0 +1,15 @@
+=========================================
+  POWER MONITOR SUMMARY
+=========================================
+  Date/Time         : 2026-06-17 18:32:50
+  Interval          : 1s
+  CSV log           : reports/power_log_20260617_183148.csv
+-----------------------------------------
+  Total Samples     : 26
+  Average Power     : 5510.4 mW
+  Min / Max Power   : 5060.0 / 8310.0 mW
+  Average Current   : 1085.7 mA
+  Average Voltage   : 5045.0 mV
+  Average PL Temp   : 33.0 C
+  Max PL Temp       : 34.0 C
+=========================================
