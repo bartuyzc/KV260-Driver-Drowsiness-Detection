@@ -1,0 +1,100 @@
+============================================================
+  KV260 DROWSINESS DETECTION — EVALUATION & POWER TOOLS
+============================================================
+
+There are two Python scripts for model performance analysis:
+1) image_evaluate_accuracy.py
+   → Evaluates DPU performance using a dataset of images
+   → Saves results to a text file
+2) video_evaluate_accuracy.py
+   → Performs real-time evaluation using a webcam (awake/sleepy classification)
+   → Saves results to a text file
+
+There is one Bash script for power and temperature monitoring:
+3) power_monitor.sh
+   → Continuously reads SOM power and PL temperature via xmutil platformstats
+   → Saves results to a timestamped CSV file
+
+------------------------------------------------------------
+HOW TO RUN
+------------------------------------------------------------
+
+# Image-based evaluation
+python3 evaluate_accuracy.py \
+    --model <model_file> \
+    --data  <data_path>
+
+Example:
+python3 evaluate_accuracy.py \
+    --model resnet50_compiled.xmodel \
+    --data  data/test
+
+------------------------------------------------------------
+
+# Real-time evaluation (webcam)
+This mode requires collecting two states:
+  - AWAKE  (open eyes position)
+  - SLEEPY (closed eyes position)
+You must stay in each state for a fixed number of frames.
+When prompted on screen, press SPACE to start collecting each state.
+
+python3 video_evaluate_accuracy.py \
+    --model        <model_file> \
+    --awake-frames <frame_count> \
+    --sleepy-frames <frame_count>
+
+Example:
+python3 video_evaluate_accuracy.py \
+    --model         resnet50_compiled.xmodel \
+    --awake-frames  100 \
+    --sleepy-frames 100
+
+------------------------------------------------------------
+
+# Power & Temperature Monitoring
+Reads the following values from xmutil xlnx_platformstats at regular intervals:
+  - SOM total power   (mW)
+  - SOM total current (mA)
+  - SOM total voltage (mV)
+  - PL temperature    (C)
+Results are printed to the terminal and saved to a CSV file.
+
+First, make the script executable (only needed once):
+  chmod +x power_monitor.sh
+
+Basic usage (runs until Ctrl+C):
+  ./power_monitor.sh
+
+With custom interval (seconds between each reading):
+  ./power_monitor.sh --interval 2
+
+With fixed duration (stops automatically after N seconds):
+  ./power_monitor.sh --interval 1 --duration 60
+
+------------------------------------------------------------
+RECOMMENDED MEASUREMENT WORKFLOW (for paper/report)
+------------------------------------------------------------
+
+Step 1 — Idle baseline (no inference running):
+  ./power_monitor.sh --interval 1 --duration 30
+
+Step 2 — Inference load (start deploy_video.py in another terminal first):
+  ./power_monitor.sh --interval 1 --duration 60
+
+Step 3 — Compare the two CSV files.
+  The difference in average power = DPU inference overhead.
+
+------------------------------------------------------------
+OUTPUT FILES
+------------------------------------------------------------
+
+  image_evaluate_accuracy.py      → reports/image_eval_results_YYYYMMDD_HHMMSS.txt
+  
+  video_evaluate_accuracy.py → reports/video_eval_results_YYYYMMDD_HHMMSS.txt
+  
+  power_monitor.sh          → reports/power_log_YYYYMMDD_HHMMSS.csv
+  			      → reports/power_summary_YYYYMMDD_HHMMSS.csv
+
+All files are saved in the same directory as the script.
+
+============================================================
