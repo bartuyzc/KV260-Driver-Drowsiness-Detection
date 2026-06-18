@@ -62,12 +62,17 @@ The system captures frames from a camera, preprocesses the eye region, performs 
 ├── resnet50_compiled.xmodel    # Compiled model for KV260 DPU
 ├── compiled_output/            # Vitis AI compilation outputs
 ├── quantized_output/           # Quantized model outputs
-├── reports/                    # VAI Trace reports
+├── reports/                    # VAI Trace and power/performance reports
 
 ├── data/                       # Dataset directory
 
 ├── awake.png                   # Sample awake eye image
 ├── sleepy.png                  # Sample sleepy eye image
+
+├── how_to_run_analyzers.txt    # Evaluation & power tools instructions
+├── image_evaluate_accuracy.py  # Image-based evaluation results 
+├── video_evaluate_accuracy.py  # Real-time evaluation results
+├── power_monitor.sh            # To analyze power metrics
 
 ├── how_to_compile.txt          # Vitis AI compilation instructions
 ├── notes.txt                   # Development notes
